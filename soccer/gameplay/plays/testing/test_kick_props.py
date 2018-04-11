@@ -7,7 +7,7 @@ import main
 import constants
 import robocup
 import role_assignment
-
+import statistics
 
 # this test repeatedly runs the PivotKick behavior aimed at our goal
 class TestKickProps(play.Play):
@@ -41,10 +41,12 @@ class TestKickProps(play.Play):
         if kick.is_done_running():
             self.maxSpeeds.append(self.curr_max_vel)
             self.curr_max_vel = 0
-            print(self.maxSpeeds)
+            print("speeds:", self.maxSpeeds)
+            print("mean:", statistics.mean(self.maxSpeeds))
+            if (len(self.maxSpeeds) > 1):
+                print("variance:", statistics.variance(self.maxSpeeds))
+                print("standard deviation:", statistics.stdev(self.maxSpeeds))
             kick.restart()
-
-
 
     def role_requirements(self):
         reqs = super().role_requirements()
