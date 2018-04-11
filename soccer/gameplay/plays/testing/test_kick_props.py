@@ -14,6 +14,8 @@ class TestKickProps(play.Play):
     def __init__(self):
         super().__init__(continuous=True)
 
+        self.maxSpeeds = []
+
         self.add_transition(behavior.Behavior.State.start,
                             behavior.Behavior.State.running, lambda: True,
                             'immediately')
@@ -24,6 +26,7 @@ class TestKickProps(play.Play):
         self.add_subbehavior(kick, 'kick', required=False)
         
         self.shell_id = None
+        self.curr_max_vel = 0
 
     def execute_running(self):
         for bhvr in self.all_subbehaviors():
@@ -32,8 +35,16 @@ class TestKickProps(play.Play):
 
         kick = self.subbehavior_with_name('kick')
 
+        if main.ball().vel.mag() > self.curr_max_vel:
+            self.curr_max_vel = main.ball().vel.mag()
+
         if kick.is_done_running():
+            self.maxSpeeds.append(self.curr_max_vel)
+            self.curr_max_vel = 0
+            print(self.maxSpeeds)
             kick.restart()
+
+
 
     def role_requirements(self):
         reqs = super().role_requirements()
