@@ -41,15 +41,10 @@ class TestKickProps(play.Play):
         self.add_subbehavior(kick, 'kick', required=False)
 
     def execute_running(self):
-        # print(self.all_subbehaviors())
         for bhvr in self.all_subbehaviors():
             if bhvr.robot != None:
+                self.curr_robot = bhvr.robot
                 self.shell_id = bhvr.robot.shell_id()
-        # print(self.shell_id)
-        self.curr_robot = self.subbehavior_with_name('kick').robot
-        print(self.curr_robot)
-        self.shell_id = self.curr_robot.shell_id()
-        # print(self.shell_id)
         
         kick = self.subbehavior_with_name('kick')
 
@@ -59,8 +54,10 @@ class TestKickProps(play.Play):
         if main.ball().pos.y == 0:
             self.dist_to_target = main.ball().pos.x
 
-        # horizontal_line = robocup.Line(self.robot.pos, (self.robot.pos.x + 1, self.robot.pos.y))
-        # ideal_line = robocup.Line(self.robot.pos, self.target)
+        if self.curr_robot is not None:
+            horizontal_line = robocup.Line(self.curr_robot.pos, 
+                robocup.Point(self.curr_robot.pos.x + 1, self.curr_robot.pos.y))
+            ideal_line = robocup.Line(self.curr_robot.pos, self.target)
 
         # if kick.robot is not None:
         #     print(kick.robot.angle)
