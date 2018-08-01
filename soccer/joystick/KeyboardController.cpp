@@ -13,11 +13,56 @@ const float TRIGGER_CUTOFF = 0.9;
 KeyboardController::KeyboardController()
 	// I dont know what this does 
     : _controller(nullptr), _lastDribblerTime(), _lastKickerTime() {
-    // lmao do we need to check if a keyboard is plugged in?
+    // Check if the keyboard is plugged in?
 
-    // add mappings
+    // Current problem is that we need to use an event detector inside
+    // our UI, from which we will request information from our KeyboardController. 
 
-    // if "i" is pressed
+    // We need to detect certain key presses, and relay that information to our
+    // KeyboardController, which will give joystick values to the processor
+
+    // Controllers will be detected later if needed.
+    connected = false;
+    controllerId = -1;
+    robotId = -1;
+    openJoystick();
+}
+
+void KeyboardController::update() {
+    QMutexLocker(&mutex());
+    SDL_GameControllerUpdate();
+
+    RJ::Time now = RJ::now();
+
+    /*
+     *  DRIBBLER ON/OFF
+     */
+
+    /*
+     *  DRIBBLER POWER
+     */
+
+    /*
+     *  KICKER POWER
+     */
+
+    /*
+     *  KICK TRUE/FALSE
+     */
+
+    /*
+     *  CHIP TRUE/FALSE
+     */
+
+    /*
+     *  VELOCITY ROTATION
+     */
+    
+    /*
+     *  VELOCITY TRANSLATION
+     */
+   
+   // if "i" is pressed
     //   input.y() = 0.5
 	//   input.x() = 0    	
     // if "k" is pressed
@@ -30,19 +75,29 @@ KeyboardController::KeyboardController()
     //   input.y() = 0
 	//   input.x() = 0.5 
 
-    //  _controls.translation = Geometry2d::Point(input.x(), input.y());
+    Geometry2d::Point input(0, 0);
 
-    // Current problem is that we need to use an event detector inside
-    // our UI, from which we will request information from our KeyboardController. 
+    char currKey = getKeyboardControlFilter.getKeyPressed
 
-    // We need to detect certain key presses, and relay that information to our
-    // KeyboardController, which will give joystick values to the processor
+    // Align along an axis using the DPAD as modifier buttons
+    if (currKey == 'I') {
+        input.y() = -0.5;
+        input.x() = 0;
+    } else if (currKey == 'K') {
+        input.y() = 0.5;
+        input.x() = 0;
+    } else if (currKey == 'J') {
+        input.y() = 0;
+        input.x() = -0.5;
+    } else if (currKey == 'L') {
+        input.y() = 0;
+        input.x() = 0.5;
+    }
 
+    _controls.translation = Geometry2d::Point(input.x(), input.y());
+}
 
-
-    // Controllers will be detected later if needed.
-    connected = false;
-    controllerId = -1;
-    robotId = -1;
-    openJoystick();
+JoystickControlValues KeyboardController::getJoystickControlValues() {
+    QMutexLocker(&mutex());
+    return _controls;
 }
