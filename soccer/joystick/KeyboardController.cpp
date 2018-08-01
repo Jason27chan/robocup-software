@@ -9,3 +9,40 @@ const float AXIS_MAX = 32768.0f;
 // cutoff for counting triggers as 'on'
 const float TRIGGER_CUTOFF = 0.9;
 }
+
+KeyboardController::KeyboardController()
+	// I dont know what this does 
+    : _controller(nullptr), _lastDribblerTime(), _lastKickerTime() {
+    // lmao do we need to check if a keyboard is plugged in?
+
+    // add mappings
+
+    // if "i" is pressed
+    //   input.y() = 0.5
+	//   input.x() = 0    	
+    // if "k" is pressed
+    //   input.y() = -0.5
+	//   input.x() = 0    	
+    // if "j" is pressed
+    //   input.y() = 0
+	//   input.x() = -0.5    	
+    // if "l" is pressed
+    //   input.y() = 0
+	//   input.x() = 0.5 
+
+    //  _controls.translation = Geometry2d::Point(input.x(), input.y());
+
+    // Current problem is that we need to use an event detector inside
+    // our UI, from which we will request information from our KeyboardController. 
+
+    // We need to detect certain key presses, and relay that information to our
+    // KeyboardController, which will give joystick values to the processor
+
+
+
+    // Controllers will be detected later if needed.
+    connected = false;
+    controllerId = -1;
+    robotId = -1;
+    openJoystick();
+}
