@@ -7,6 +7,10 @@ import standard_play
 import skills.line_kick
 import tactics.coordinated_pass
 
+# This restart is intended to act as a default restart play
+# that does not do any calculation.
+# It will chip to a point in front of the opponent goal in 
+# every situation.`
 class BasicIndirect(standard_play.StandardPlay):
 
     def __init__(self, indirect=None):
