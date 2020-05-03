@@ -1,7 +1,9 @@
-import standard_play
-import situational_play_selection
 import main
 import constants
+import robocup
+import behavior
+import standard_play
+import situational_play_selection
 
 from tactics import coordinated_pass
 
@@ -11,7 +13,7 @@ from tactics import coordinated_pass
 class BasicOffensiveKick(standard_play.StandardPlay):
 
     _situationList = [
-        situational_play_selection.SituationalPlaySelector.Situation.OFFENSIVE_KICk
+        situational_play_selection.SituationalPlaySelector.Situation.OFFENSIVE_KICK
     ] # yapf: disable
 
     def __init__(self):
