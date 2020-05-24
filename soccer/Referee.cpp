@@ -11,7 +11,8 @@
 #include "Constants.hpp"
 #include "RefereeEnums.hpp"
 
-using namespace RefereeModuleEnums;
+using RefereeModuleEnums::Command;
+using RefereeModuleEnums::Stage;
 
 /// Distance in meters that the ball must travel for a kick to be detected
 static const float KickThreshold = Ball_Radius * 3;
@@ -27,11 +28,11 @@ static const int KickVerifyTime_ms = 250;
 static const bool CancelBallPlaceOnHalt = true;
 
 Referee::Referee(Context* const context)
-    : stage_(NORMAL_FIRST_HALF_PRE),
-      command_(HALT),
+    : stage_(Stage::NORMAL_FIRST_HALF_PRE),
+      command_(Command::HALT),
       sent_time{},
       received_time{},
-      stage_time_left{},
+      stage_time_left_{},
       command_counter{},
       yellow_info{},
       blue_info{},
@@ -45,18 +46,12 @@ Referee::Referee(Context* const context)
       prev_stage_{},
       ballPlacementX{},
       ballPlacementY{},
+      _recv_buffer{},
       _asio_socket{_io_service} {}
-
-Referee::~Referee() { stop(); }
 
 void Referee::start() {
     setupRefereeMulticast();
     startReceive();
-}
-
-void Referee::stop() {
-    _asio_socket.shutdown(boost::asio::ip::udp::socket::shutdown_both);
-    _asio_socket.close();
 }
 
 void Referee::getPackets(std::vector<RefereePacket>& packets) {
@@ -83,7 +78,7 @@ void Referee::receivePacket(const boost::system::error_code& error,
         return;
     }
 
-    if (!_useExternalRef) {
+    if (!_context->game_settings.use_external_referee) {
         return;
     }
 
@@ -105,7 +100,7 @@ void Referee::receivePacket(const boost::system::error_code& error,
     command_ = static_cast<Command>(packet.wrapper.command());
     sent_time =
         RJ::Time(std::chrono::microseconds(packet.wrapper.packet_timestamp()));
-    stage_time_left =
+    stage_time_left_ =
         std::chrono::milliseconds(packet.wrapper.stage_time_left());
     command_counter = packet.wrapper.command_counter();
     command_timestamp =
@@ -161,8 +156,6 @@ void Referee::run() {
     update();
 }
 
-void Referee::overrideTeam(bool isBlue) { _game_state.blueTeam = isBlue; }
-
 void Referee::spinKickWatcher(const SystemState& system_state) {
     /// Only run the kick detector when the ball is visible
     if (!system_state.ball.valid) {
@@ -212,6 +205,15 @@ void Referee::spinKickWatcher(const SystemState& system_state) {
 }
 
 void Referee::update() {
+    if (!_isRefControlled) {
+        // The command in game_settings acts like an RPC or a signal. We
+        // acknowledge it as completed by clearing its value.
+        if (_context->game_settings.requestRefCommand != std::nullopt) {
+            command_ = _context->game_settings.requestRefCommand.value();
+            _context->game_settings.requestRefCommand.reset();
+        }
+    }
+
     _game_state = updateGameState(command_);
     _context->game_state = _game_state;
 
@@ -251,36 +253,31 @@ GameState Referee::updateGameState(Command command) const {
                                           this->stage_]() -> GameState::Period {
         switch (stage) {
             case Stage::NORMAL_FIRST_HALF_PRE:
-                return GameState::FirstHalf;
             case Stage::NORMAL_FIRST_HALF:
                 return GameState::FirstHalf;
             case Stage::NORMAL_HALF_TIME:
                 return GameState::Halftime;
             case Stage::NORMAL_SECOND_HALF_PRE:
-                return GameState::SecondHalf;
             case Stage::NORMAL_SECOND_HALF:
                 return GameState::SecondHalf;
             case Stage::EXTRA_TIME_BREAK:
                 return GameState::FirstHalf;
             case Stage::EXTRA_FIRST_HALF_PRE:
-                return GameState::Overtime1;
             case Stage::EXTRA_FIRST_HALF:
                 return GameState::Overtime1;
             case Stage::EXTRA_HALF_TIME:
                 return GameState::Halftime;
             case Stage::EXTRA_SECOND_HALF_PRE:
-                return GameState::Overtime2;
             case Stage::EXTRA_SECOND_HALF:
                 return GameState::Overtime2;
             case Stage::PENALTY_SHOOTOUT_BREAK:
-                return GameState::PenaltyShootout;
             case Stage::PENALTY_SHOOTOUT:
                 return GameState::PenaltyShootout;
             case Stage::POST_GAME:
                 return GameState::Overtime2;
             default:
                 return GameState::FirstHalf;
-        };
+        }
     }();
 
     GameState::State state = _game_state.state;
@@ -288,9 +285,13 @@ GameState Referee::updateGameState(Command command) const {
     bool our_restart = _game_state.ourRestart;
     Geometry2d::Point ball_placement_point = _game_state.ballPlacementPoint;
 
-    const bool blue_team = _game_state.blueTeam;
+    bool blue_team = _game_state.blueTeam;
 
-    switch (command) {
+    if (!_isRefControlled) {
+        blue_team = _context->game_settings.requestBlueTeam;
+    }
+
+    switch (command_) {
         case Command::HALT:
             state = GameState::Halt;
 
@@ -346,13 +347,10 @@ GameState Referee::updateGameState(Command command) const {
             our_restart = blue_team;
             break;
         case Command::TIMEOUT_YELLOW:
-            state = GameState::Halt;
-            break;
         case Command::TIMEOUT_BLUE:
             state = GameState::Halt;
             break;
         case Command::GOAL_YELLOW:
-            break;
         case Command::GOAL_BLUE:
             break;
         case Command::BALL_PLACEMENT_YELLOW:
@@ -378,8 +376,12 @@ GameState Referee::updateGameState(Command command) const {
     const int our_score = blue_team ? blue_info.score : yellow_info.score;
     const int their_score = blue_team ? yellow_info.score : blue_info.score;
 
-    const auto our_info = blue_team ? blue_info : yellow_info;
+    auto our_info = blue_team ? blue_info : yellow_info;
     const auto their_info = blue_team ? yellow_info : blue_info;
+
+    if (!_isRefControlled) {
+        our_info.goalie = _context->game_settings.requestGoalieID;
+    }
 
     return GameState{period,
                      state,
@@ -387,10 +389,11 @@ GameState Referee::updateGameState(Command command) const {
                      our_restart,
                      our_score,
                      their_score,
-                     _game_state.secondsRemaining,
+                     stage_time_left_,
                      our_info,
                      their_info,
                      blue_team,
                      ball_placement_point,
-                     _game_state.defendPlusX};
+                     stage_,
+                     command_};
 }

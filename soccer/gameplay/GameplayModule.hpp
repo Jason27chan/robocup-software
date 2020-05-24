@@ -12,7 +12,6 @@
 #include <Geometry2d/ShapeSet.hpp>
 
 #include <set>
-#include <QMutex>
 #include <QString>
 
 #include <Configuration.hpp>
@@ -70,9 +69,6 @@ public:
 
     void clearPlays();
     bool checkPlaybookStatus();
-
-    void goalieID(int value);
-    int goalieID() { return _goalieID; }
 
     /**
      * @defgroup matrices Coordinate Conversion Matrices
@@ -143,10 +139,6 @@ protected:
     boost::python::object getMainModule();
 
 private:
-    /// This protects all of Gameplay.
-    /// This is held while plays are running.
-    QMutex _mutex;
-
     static ConfigDouble* _fieldEdgeInset;
     double _oldFieldEdgeInset;
 

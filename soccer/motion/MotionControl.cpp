@@ -1,12 +1,11 @@
 #include "MotionControl.hpp"
 
-#include <optional>
-
+#include <Context.hpp>
 #include <Geometry2d/Util.hpp>
 #include <Robot.hpp>
 #include <RobotConfig.hpp>
-#include <SystemState.hpp>
 #include <Utils.hpp>
+#include <optional>
 #include <planning/MotionInstant.hpp>
 
 using namespace std;
@@ -41,13 +40,12 @@ void MotionControl::run(const RobotState& state,
                         bool is_joystick_controlled, MotionSetpoint* setpoint) {
     // If we don't have a setpoint (output velocities) or we're under joystick
     // control, reset our PID controllers and exit (but don't force a stop).
-    if (!setpoint || is_joystick_controlled) {
+    if ((setpoint == nullptr) || is_joystick_controlled) {
         reset();
         return;
     }
 
     if (!state.visible || !path.path) {
-        reset();
         stop(setpoint);
         return;
     }
@@ -180,8 +178,13 @@ void MotionControl::updateParams() {
     _angleController.kd = *_config->rotation.d;
 }
 
+void MotionControl::resetPIDControllers() {
+    _positionXController.reset();
+    _positionYController.reset();
+    _angleController.reset();
+}
+
 void MotionControl::stop(MotionSetpoint* setpoint) {
-    setpoint->xvelocity = 0;
-    setpoint->yvelocity = 0;
-    setpoint->avelocity = 0;
+    setpoint->clear();
+    resetPIDControllers();
 }

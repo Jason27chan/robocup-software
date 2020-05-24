@@ -6,11 +6,13 @@
 #include <set>
 
 #include "DebugDrawer.hpp"
+#include "GameSettings.hpp"
 #include "GameState.hpp"
 #include "RobotConfig.hpp"
 #include "RobotIntent.hpp"
 #include "SystemState.hpp"
 #include "WorldState.hpp"
+#include "joystick/GamepadMessage.hpp"
 #include "motion/MotionSetpoint.hpp"
 #include "planning/RobotConstraints.hpp"
 #include "vision/VisionPacket.hpp"
@@ -32,12 +34,18 @@ struct Context {
     std::array<RobotConstraints, Num_Shells> robot_constraints;
 
     std::array<bool, Num_Shells> is_joystick_controlled;
+    /** \brief Whether at least one joystick is connected */
+    bool joystick_valid;
 
     std::unique_ptr<RobotConfig> robot_config;
 
     SystemState state;
     GameState game_state;
     DebugDrawer debug_drawer;
+
+    /** \brief Vector of unique IDs of gamepads. First is oldest to connect. */
+    std::vector<int> gamepads;
+    std::vector<joystick::GamepadMessage> gamepad_messages;
 
     std::vector<std::unique_ptr<VisionPacket>> vision_packets;
     WorldState world_state;
@@ -49,5 +57,5 @@ struct Context {
     std::optional<QPointF> ball_command;
     std::optional<Geometry2d::TransformMatrix> screen_to_world_command;
 
-    bool is_simulation;
+    GameSettings game_settings;
 };
