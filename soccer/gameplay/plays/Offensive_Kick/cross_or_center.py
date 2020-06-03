@@ -3,7 +3,7 @@ import constants
 import robocup
 import behavior
 import standard_play
-import situational_play_selection
+import evaluation
 
 from tactics import coordinated_pass
 from situations import Situation
@@ -28,6 +28,7 @@ class CrossOrCenter(standard_play.StandardPlay):
 
     def __init__(self):
         super().__init__(continuous = True)
+        priorities = CrossOrCenter.priorities
         reflector = 1
         #Depending on corner's location the points are refelcted
         if main.ball().pos.x < 0:
@@ -49,13 +50,13 @@ class CrossOrCenter(standard_play.StandardPlay):
         for line in lines:
             best_points.append(PointAndPriority(self.best_point_on_line(line), line.priority))
 
-        multiplier_increment = MINIMUM_MULTIPLIER/(len(best_points) - 1)
+        multiplier_increment = CrossOrCenter.MINIMUM_MULTIPLIER/(len(best_points) - 1)
 
         best_point = max(best_points,key = lambda point: 
                 evaluation.passing.eval_pass(main.ball().pos, point.line_pt) 
                 - multiplier_increment * point.priority)
         
-        self.add_subbehavior(tactics.coordinated_pass.CoordinatedPass(best_point.line_pt), 'passing')
+        self.add_subbehavior(coordinated_pass.CoordinatedPass(best_point.line_pt), 'passing')
         
     #Takes three points on the line (the two ends and the midpoint) and returns one with highest probability
     def best_point_on_line(self, PointAndPriority):
